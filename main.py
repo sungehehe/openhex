@@ -215,7 +215,7 @@ class WinHexClone(QMainWindow):
         self.disk_layout.addWidget(self.disk_combo)
         
         # 添加查找 $MFT 按钮
-        self.find_mft_btn = QPushButton("查找 NTFS 的 $MFT 位置")
+        self.find_mft_btn = QPushButton("查找NTFS的$MFT位置")
         self.find_mft_btn.clicked.connect(self.find_mft)
         self.disk_layout.addWidget(self.find_mft_btn)
         
