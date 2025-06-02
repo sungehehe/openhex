@@ -346,6 +346,7 @@ class DiskUtils:
             # 检查是否为 NTFS 文件系统
             try:
                 ntfs_identifier = boot_sector[3:11].decode('ascii')
+                print(f"NTFS 标识符: {ntfs_identifier}")
                 if ntfs_identifier == 'NTFS    ':
                     # NTFS 的根目录是 $MFT 的第一个记录，这里简单返回 $MFT 位置信息
                     mft_sector = DiskUtils.find_mft_location(disk_path)
@@ -355,8 +356,9 @@ class DiskUtils:
             
             # 检查是否为 FAT32 文件系统
             try:
-                fat32_identifier = boot_sector[54:62].decode('ascii')
-                if fat32_identifier == 'FAT32   ':
+                fat32_identifier = boot_sector[3:11].decode('ascii')
+                print(f"FAT32 标识符: {fat32_identifier}")
+                if fat32_identifier == 'MSDOS5.0':
                     # 获取每扇区字节数
                     bytes_per_sector = int.from_bytes(boot_sector[11:13], 'little')
                     # 获取每簇扇区数
@@ -376,7 +378,7 @@ class DiskUtils:
                     return f"FAT32 根目录起始扇区号: {root_sector}"
             except UnicodeDecodeError:
                 print("解码 FAT32 标识符时出错")
-
+        
             # 可在此添加对其他文件系统的支持，例如 FAT16
             try:
                 fat16_identifier = boot_sector[54:62].decode('ascii')
@@ -386,7 +388,7 @@ class DiskUtils:
                     return f"FAT16 根目录起始扇区号: {root_sector}"
             except UnicodeDecodeError:
                 print("解码 FAT16 标识符时出错")
-
+        
             print("暂不支持该文件系统的根目录查找")
             raise Exception("暂不支持该文件系统的根目录查找")
         except Exception as e:
