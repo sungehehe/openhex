@@ -119,13 +119,13 @@ class WinHexClone(QMainWindow):
             QPushButton {
                 padding: 5px 15px;
                 background-color: #0078d7;
-                color: #222222;
+                color: white;
                 border: none;
                 border-radius: 3px;
                 font-weight: bold;
             }
             QPushButton#goto_sector_btn, QPushButton#goto_cluster_btn {
-                color: #ffffff;
+                color:  #ffffff;
                 background-color: #0078d7;
             }
             QPushButton#goto_sector_btn:hover, QPushButton#goto_cluster_btn:hover {
