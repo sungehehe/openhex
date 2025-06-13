@@ -394,3 +394,57 @@ class DiskUtils:
         except Exception as e:
             print(f"查找根目录失败: {str(e)}")
             raise Exception(f"查找根目录失败: {str(e)}")
+
+    @staticmethod
+    def parse_mft_record(data: bytes) -> dict:
+        """解析MFT记录结构"""
+        record = {
+            'header': {
+                'offset': 0,
+                'size': 42,
+                'signature': data[0:4],
+                'update_seq_offset': int.from_bytes(data[4:6], 'little'),
+                'update_seq_size': int.from_bytes(data[6:8], 'little'),
+                'lsn': int.from_bytes(data[8:16], 'little'),
+                'sequence_number': int.from_bytes(data[16:18], 'little'),
+                'link_count': int.from_bytes(data[18:20], 'little'),
+                'attrs_offset': int.from_bytes(data[20:22], 'little'),
+                'flags': int.from_bytes(data[22:24], 'little'),
+                'used_size': int.from_bytes(data[24:28], 'little'),
+                'alloc_size': int.from_bytes(data[28:32], 'little'),
+                'base_ref': int.from_bytes(data[32:40], 'little'),
+                'next_attr_id': int.from_bytes(data[40:42], 'little')
+            },
+            'attributes': []
+        }
+        
+        # 解析属性
+        pos = record['header']['attrs_offset']
+        while pos < len(data):
+            attr_type = int.from_bytes(data[pos:pos+4], 'little')
+            if attr_type == 0xFFFFFFFF:  # 属性列表结束
+                break
+                
+            attr = {
+                'offset': pos,
+                'type': attr_type,
+                'size': int.from_bytes(data[pos+4:pos+8], 'little'),
+                'non_resident': data[pos+8],
+                'name_length': data[pos+9],
+                'name_offset': int.from_bytes(data[pos+10:pos+12], 'little'),
+                'flags': int.from_bytes(data[pos+12:pos+14], 'little'),
+                'attr_id': data[pos+14:pos+16]
+            }
+            
+            if attr['non_resident']:
+                # 非常驻属性处理
+                pass
+            else:
+                # 常驻属性处理
+                attr['content_offset'] = int.from_bytes(data[pos+20:pos+22], 'little')
+                attr['content_size'] = int.from_bytes(data[pos+16:pos+20], 'little')
+            
+            record['attributes'].append(attr)
+            pos += attr['size']
+        
+        return record

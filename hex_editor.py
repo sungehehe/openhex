@@ -150,6 +150,17 @@ class HexArea(QWidget):
     def paintEvent(self, event):
         if not self.hex_editor.data or len(self.hex_editor.data) == 0:
             return
+        
+        # 检查是否是NTFS的$MFT文件
+        is_mft = hasattr(self.hex_editor, 'is_mft') and self.hex_editor.is_mft
+        mft_record = None
+        if is_mft:
+            try:
+                from disk_utils import DiskUtils
+                mft_record = DiskUtils.parse_mft_record(bytes(self.hex_editor.data))
+            except:
+                is_mft = False
+        
         painter = QPainter(self)
         painter.setFont(self.hex_editor.font)
         painter.fillRect(event.rect(), QColor("#FFFFFF"))
@@ -197,18 +208,50 @@ class HexArea(QWidget):
             x = self.hex_editor.offset_width + (i % self.hex_editor.bytes_per_line) * self.hex_editor.cell_width
             y = int((i // self.hex_editor.bytes_per_line) * self.hex_editor.cell_height - self.scroll_offset)
             
+            # 设置默认背景色
+            bg_color = None
+            
+            # 如果是MFT记录，设置不同区域的背景色
+            if is_mft and mft_record:
+                # 文件头区域 - 着色56字节
+                file_header_end = mft_record['header']['offset'] + 56
+                if i >= mft_record['header']['offset'] and i < file_header_end:
+                    bg_color = QColor("#FFE4B5")
+                
+                # 属性处理
+                for attr in mft_record['attributes']:
+                    # 10H和30H属性头 - 着色24字节
+                    if attr['type'] in [0x10, 0x30]:
+                        attr_header_end = attr['offset'] + 24
+                        if i >= attr['offset'] and i < attr_header_end:
+                            bg_color = QColor("#ADD8E6")
+                        
+                        # 10H属性体 - 着色72字节
+                        if attr['type'] == 0x10 and 'content_offset' in attr:
+                            attr_body_end = attr['offset'] + attr['content_offset'] + 72
+                            if i >= attr['offset'] + attr['content_offset'] and i < attr_body_end:
+                                bg_color = QColor("#90EE90")
+                        
+                        # 30H属性体 - 着色80字节（原90字节减少10字节）
+                        elif attr['type'] == 0x30 and 'content_offset' in attr:
+                            attr_body_end = attr['offset'] + attr['content_offset'] + 80
+                            if i >= attr['offset'] + attr['content_offset'] and i < attr_body_end:
+                                bg_color = QColor("#90EE90")
+                    
+                    # 其他属性值
+                    elif 'content_offset' in attr and i >= attr['offset'] + attr['content_offset'] and i < attr['offset'] + attr['content_offset'] + attr['content_size']:
+                        bg_color = QColor("#90EE90")
+            
             # 绘制选中背景
             if self.selection_start != -1 and self.selection_end != -1:
                 if min(self.selection_start, self.selection_end) <= i <= max(self.selection_start, self.selection_end):
-                    rect = QRect(x, y, self.hex_editor.cell_width, self.hex_editor.cell_height)
-                    painter.fillRect(rect, QColor("#0078D7"))
-                    painter.setPen(QPen(QColor("#FFFFFF")))
-                else:
-                    painter.setPen(QPen(QColor("#000000")))
-            else:
-                painter.setPen(QPen(QColor("#000000")))
+                    bg_color = QColor("#0078D7")  # 选中区域 - 蓝色
             
-            # 绘制十六进制值
+            # 绘制背景
+            if bg_color:
+                rect = QRect(x, y, self.hex_editor.cell_width, self.hex_editor.cell_height)
+                painter.fillRect(rect, bg_color)
+            
             rect = QRect(x + self.hex_editor.margin, y, self.hex_editor.cell_width - 2 * self.hex_editor.margin,
                         self.hex_editor.cell_height)
             painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
@@ -351,4 +394,4 @@ class HexArea(QWidget):
                 self.hex_editor.update_status()
                 self.update()
             except Exception:
-                return 
+                return

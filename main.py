@@ -255,12 +255,15 @@ class WinHexClone(QMainWindow):
     def find_mft(self):
         """查找 NTFS 的 $MFT 位置"""
         try:
-            # 由于已经有 current_disk 属性，可以直接使用它，无需调用 get_current_disk_path
             if not self.current_disk:
                 QMessageBox.warning(self, "警告", "请先选择一个磁盘")
                 return
 
             mft_sector = DiskUtils.find_mft_location(self.current_disk)
+            data = DiskUtils.read_sector(self.current_disk, mft_sector)
+            self.hex_editor.set_data(data)
+            self.hex_editor.is_mft = True  # 设置MFT标志
+            self.hex_editor.update()
             QMessageBox.information(self, "结果", f"NTFS 的 $MFT 起始扇区号为: {mft_sector}")
         except Exception as e:
             QMessageBox.critical(self, "错误", str(e))
