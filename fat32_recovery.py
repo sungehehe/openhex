@@ -35,7 +35,14 @@ class FAT32Recovery:
     # 文件结尾签名
     FILE_EOF_SIGNATURES = {
         'jpg': [b'\xFF\xD9'],
+        'jpeg': [b'\xFF\xD9'],
         'png': [b'\x49\x45\x4E\x44\xAE\x42\x60\x82'],  # IEND块
+        'gif': [b'\x3B'],  # GIF文件以0x3B结尾
+        'bmp': [b'\x00\x00'],  # BMP通常以几个0结尾，不是很可靠
+        'pdf': [b'%%EOF'],  # PDF文件结尾标记
+        'zip': [b'\x50\x4B\x05\x06'],  # End of central directory记录
+        'rar': [b'\xC4\x3D\x7B\x00\x40\x07\x00'],  # RAR结尾标记
+        'webp': [b'ANMF'],  # WEBP动画帧结束标记
     }
     
     def __init__(self, disk_path: str):
@@ -63,6 +70,30 @@ class FAT32Recovery:
         # 已删除的文件列表
         self.deleted_files = []
         
+    def is_valid_jpeg_cluster(self, data: bytes) -> bool:
+        """检查一个数据块是否可能是有效的JPEG数据流的一部分(更严格的检查)"""
+        if not data:
+            return False
+            
+        # 拒绝大部分是零的簇，因为这通常是空白空间
+        if data.count(b'\x00') > len(data) * 0.9:
+            return False
+
+        # 在JPEG数据流中，0xFF是特殊字节。如果它不是一个转义的0xFF00，
+        # 那么它必须后跟一个有效的标记。在熵编码数据中，我们应该只看到0xFF00或0xFFD0-D7（重启标记）。
+        # 看到其他标记是可能的，但在数据块内部不太可能。
+        # 这个严格的规则假定，在一个数据块内部，任何0xFF字节都必须是规范的一部分。
+        for i in range(len(data) - 1):
+            if data[i] == 0xFF:
+                marker = data[i+1]
+                if marker == 0x00:  # 转义的0xFF
+                    continue
+                if 0xD0 <= marker <= 0xD7:  # 重启标记
+                    continue
+                # 任何其他的0xFF序列都违反了这个严格的假设，因此认为簇无效
+                return False
+        return True
+    
     def open_disk(self):
         """打开磁盘设备"""
         try:
@@ -598,12 +629,13 @@ class FAT32Recovery:
                     return ext
         return ""
     
-    def find_next_cluster_by_content(self, current_cluster: int, file_type: str) -> int:
-        """根据内容相似性寻找下一个可能的簇
+    def find_next_cluster_by_content(self, current_cluster: int, file_type: str, processed_clusters: set) -> int:
+        """根据内容相似性寻找下一个可能的簇 (此函数现在是备用逻辑，主要恢复流程不使用)
         
         Args:
             current_cluster: 当前簇号
             file_type: 文件类型
+            processed_clusters: 已用于此文件恢复的簇集合
             
         Returns:
             可能的下一个簇号，如果找不到返回0
@@ -614,11 +646,42 @@ class FAT32Recovery:
             
             # 计算当前簇所在区域的附近簇，优先检查
             nearby_clusters = []
-            for i in range(1, 10):  # 检查前后10个簇
-                if current_cluster + i < self.count_of_clusters + 2:
-                    nearby_clusters.append(current_cluster + i)
-                if current_cluster - i >= 2:
-                    nearby_clusters.append(current_cluster - i)
+            for i in range(1, 20):  # 扩大检查范围到前后20个簇
+                candidate_fwd = current_cluster + i
+                if candidate_fwd < self.count_of_clusters + 2 and candidate_fwd not in processed_clusters:
+                    nearby_clusters.append(candidate_fwd)
+                
+                candidate_bwd = current_cluster - i
+                if candidate_bwd >= 2 and candidate_bwd not in processed_clusters:
+                    nearby_clusters.append(candidate_bwd)
+            
+            # 优先检查连续簇
+            continuous_cluster = current_cluster + 1
+            if continuous_cluster < self.count_of_clusters + 2 and continuous_cluster not in processed_clusters:
+                # 读取下一个簇的数据
+                continuous_data = self.read_cluster(continuous_cluster)
+                
+                # 对于图片文件，判断数据连续性
+                if file_type in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
+                    # JPEG文件的特殊处理
+                    if file_type in ['jpg', 'jpeg']:
+                        # 检查JPEG标记
+                        for i in range(len(continuous_data) - 1):
+                            if continuous_data[i] == 0xFF and (0xD0 <= continuous_data[i+1] <= 0xD9 or 0xE0 <= continuous_data[i+1] <= 0xEF):
+                                return continuous_cluster
+                    
+                    # PNG文件的特殊处理
+                    elif file_type == 'png':
+                        # 检查PNG块
+                        for i in range(0, len(continuous_data) - 8, 4):
+                            if continuous_data[i+4:i+8] in [b'IDAT', b'IEND', b'PLTE', b'tRNS', b'gAMA', b'pHYs']:
+                                return continuous_cluster
+                    
+                    # 检查文件尾部特征
+                    if file_type in self.FILE_EOF_SIGNATURES:
+                        for sig in self.FILE_EOF_SIGNATURES[file_type]:
+                            if sig in continuous_data:
+                                return continuous_cluster
             
             # 遍历附近的簇，查找可能的下一个簇
             for next_cluster in nearby_clusters:
@@ -635,20 +698,26 @@ class FAT32Recovery:
                         if sig in next_data:
                             return next_cluster
                 
-                # 对于JPEG文件，寻找JPEG标记
-                if file_type == 'jpg':
-                    # 查找JPEG标记(0xFF后跟0xD0-0xD9或0xE0-0xEF)
-                    for i in range(len(next_data) - 1):
-                        if next_data[i] == 0xFF and (0xD0 <= next_data[i+1] <= 0xD9 or 0xE0 <= next_data[i+1] <= 0xEF):
-                            return next_cluster
+                # 对于JPEG文件，寻找JPEG标记，并使用有效性检查
+                if file_type in ['jpg', 'jpeg']:
+                    if self.is_valid_jpeg_cluster(next_data):
+                        # 查找JPEG标记(0xFF后跟0xD0-0xD9或0xE0-0xEF)
+                        for i in range(len(next_data) - 1):
+                            if next_data[i] == 0xFF and (0xD0 <= next_data[i+1] <= 0xD9 or 0xE0 <= next_data[i+1] <= 0xEF):
+                                return next_cluster
                 
                 # 对于PNG文件，寻找PNG块结构
                 if file_type == 'png':
                     # 查找PNG块格式(4字节长度+4字节类型)
                     for i in range(0, len(next_data) - 8, 4):
-                        if next_data[i+4:i+8] in [b'IDAT', b'IEND', b'PLTE', b'tRNS', b'gAMA']:
+                        if next_data[i+4:i+8] in [b'IDAT', b'IEND', b'PLTE', b'tRNS', b'gAMA', b'pHYs']:
                             return next_cluster
             
+            # 如果常规检查未找到，回退到简单的连续簇假设
+            continuous_cluster = current_cluster + 1
+            if continuous_cluster < self.count_of_clusters + 2:
+                return continuous_cluster
+                
             return 0  # 找不到合适的下一个簇
         except Exception as e:
             logging.error(f"查找下一个簇失败: {str(e)}")
@@ -709,81 +778,97 @@ class FAT32Recovery:
                 # 如果文件小于一个簇的大小，只写入实际文件大小的数据
                 if file_size <= bytes_per_cluster:
                     out_file.write(current_data[:file_size])
-                else:
-                    # 写入第一个簇
-                    out_file.write(current_data)
-                    
-                    # 尝试基于内容相似性恢复簇链
-                    bytes_written = bytes_per_cluster
-                    current_cluster = start_cluster
-                    
-                    # 最多尝试恢复所需的簇数量（加上一点余量）
-                    max_clusters = (file_size + bytes_per_cluster - 1) // bytes_per_cluster + 10
-                    cluster_count = 1
-                    
-                    while bytes_written < file_size and cluster_count < max_clusters:
-                        # 尝试找到下一个簇
-                        next_cluster = self.find_next_cluster_by_content(current_cluster, file_type)
-                        
-                        # 如果找不到下一个簇，就退出循环
-                        if next_cluster == 0:
-                            break
-                            
-                        # 读取下一个簇
-                        next_data = self.read_cluster(next_cluster)
-                        
-                        # 计算本次需要写入的字节数
-                        bytes_to_write = min(bytes_per_cluster, file_size - bytes_written)
-                        
-                        # 写入数据
-                        out_file.write(next_data[:bytes_to_write])
-                        bytes_written += bytes_to_write
-                        
-                        # 更新当前簇
-                        current_cluster = next_cluster
-                        cluster_count += 1
-                        
-                        # 如果发现文件结尾签名，提前结束
-                        if file_type in self.FILE_EOF_SIGNATURES:
-                            for sig in self.FILE_EOF_SIGNATURES[file_type]:
-                                if sig in next_data:
-                                    return True
-            
-            # 尝试进行简单恢复（假设簇是连续的）
-            if bytes_written < file_size:
-                logging.warning(f"基于内容的恢复未完成，尝试连续簇恢复，已恢复: {bytes_written}/{file_size} 字节")
+                    return True
                 
-                with open(output_path, "ab") as out_file:
-                    # 计算还需要读取的簇数
-                    remaining_bytes = file_size - bytes_written
-                    clusters_needed = (remaining_bytes + bytes_per_cluster - 1) // bytes_per_cluster
+                # 写入第一个簇
+                out_file.write(current_data)
+                bytes_written = bytes_per_cluster
+                current_cluster = start_cluster
+                cluster_count = 1
+                
+                # 计算需要的簇数量
+                required_clusters = (file_size + bytes_per_cluster - 1) // bytes_per_cluster if file_size > 0 else 1
+
+                # 主恢复循环 - 只尝试恢复连续的簇
+                while bytes_written < file_size and cluster_count < required_clusters:
+                    next_cluster = current_cluster + 1
+
+                    # 检查下一个簇是否超出范围
+                    if next_cluster >= self.count_of_clusters + 2:
+                        logging.warning(f"文件似乎超出了卷的末尾。在簇 {next_cluster} 处停止恢复。")
+                        break
+
+                    # 检查下一个簇是否已被其他文件使用
+                    if self.read_fat_entry(next_cluster) != 0:
+                        logging.warning(f"下一个连续簇 {next_cluster} 已被占用。文件可能已碎片化。停止恢复。")
+                        break
+
+                    # 读取并验证来自下一个连续簇的数据
+                    next_data = self.read_cluster(next_cluster)
                     
-                    # 假设簇是连续的，读取后续簇
-                    for i in range(1, clusters_needed + 1):
-                        next_cluster = start_cluster + i
-                        if next_cluster >= self.count_of_clusters + 2:
-                            break
-                            
-                        # 读取下一个簇
-                        next_data = self.read_cluster(next_cluster)
-                        
-                        # 计算本次需要写入的字节数
-                        bytes_to_write = min(bytes_per_cluster, file_size - bytes_written)
-                        
-                        # 写入数据
-                        out_file.write(next_data[:bytes_to_write])
-                        bytes_written += bytes_to_write
-                        
-                        # 如果已写入足够的数据，停止
-                        if bytes_written >= file_size:
-                            break
-            
-            logging.info(f"文件恢复完成: {output_path}, 恢复了 {bytes_written}/{file_size} 字节")
-            return True
+                    # 对于JPEG文件，执行严格的验证检查
+                    if file_type in ['jpg', 'jpeg'] and not self.is_valid_jpeg_cluster(next_data):
+                        logging.warning(f"簇 {next_cluster} 中的数据似乎不是有效的JPEG流。文件可能已碎片化。停止恢复。")
+                        break
+                    
+                    # 如果所有检查都通过，则写入数据
+                    bytes_to_write = min(bytes_per_cluster, file_size - bytes_written)
+                    out_file.write(next_data[:bytes_to_write])
+                    bytes_written += bytes_to_write
+                    current_cluster = next_cluster
+                    cluster_count += 1
+                    
+                    # 写入后，检查此簇是否包含EOF标记
+                    eof_found = False
+                    if file_type in self.FILE_EOF_SIGNATURES:
+                        for sig in self.FILE_EOF_SIGNATURES[file_type]:
+                            if sig in next_data:
+                                logging.info(f"在簇 {next_cluster} 中找到文件结束标记。恢复将停止。")
+                                eof_found = True
+                                break
+                    if eof_found:
+                        break  # 退出while循环
+
+                # 在结束前，最后尝试截断文件到正确的EOF
+                self.truncate_file_at_eof(output_path, file_type)
+                
+                # 检查恢复完成度
+                recovery_ratio = bytes_written / file_size if file_size > 0 else 0
+                if recovery_ratio >= 0.99:
+                    logging.info(f"文件恢复完成: {output_path}, 恢复了 {bytes_written}/{file_size} 字节")
+                else:
+                    logging.warning(f"文件部分恢复(可能由于碎片化): {output_path}, 恢复了 {bytes_written}/{file_size} 字节")
+                
+                return bytes_written > 0
             
         except Exception as e:
             logging.error(f"恢复文件失败: {str(e)}")
             return False
             
         finally:
-            self.close_disk() 
+            self.close_disk()
+    
+    def truncate_file_at_eof(self, file_path: str, file_type: str):
+        """根据文件类型的EOF签名截断文件"""
+        if file_type not in self.FILE_EOF_SIGNATURES:
+            return
+
+        try:
+            with open(file_path, "r+b") as f:
+                content = f.read()
+                eof_pos = -1
+                
+                for sig in self.FILE_EOF_SIGNATURES[file_type]:
+                    # 从后向前查找最后一个EOF标记，以处理内嵌缩略图等情况
+                    last_pos = content.rfind(sig)
+                    if last_pos > eof_pos:
+                        eof_pos = last_pos
+                
+                if eof_pos != -1:
+                    # 截断到标记之后
+                    final_size = eof_pos + len(self.FILE_EOF_SIGNATURES[file_type][0])
+                    logging.info(f"找到 {file_type} 文件尾标记，将文件 {file_path} 截断到 {final_size} 字节")
+                    f.truncate(final_size)
+
+        except Exception as e:
+            logging.error(f"截断文件 {file_path} 失败: {e}") 
