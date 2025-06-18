@@ -238,8 +238,7 @@ class WinHexClone(QMainWindow):
         # 创建菜单栏
         self.create_menu_bar()
         
-        # 创建工具栏
-        self.create_tool_bar()
+
         
         # 创建状态栏
         self.statusBar = QStatusBar()
@@ -370,7 +369,11 @@ class WinHexClone(QMainWindow):
         # 编辑菜单
         edit_menu = menubar.addMenu("编辑")
         copy_action = QAction("复制", self)
+        copy_action.triggered.connect(self.copy_selection)  # 添加复制功能连接
+        
         paste_action = QAction("粘贴", self)
+        paste_action.triggered.connect(self.paste_selection)  # 添加粘贴功能连接
+        
         edit_menu.addAction(copy_action)
         edit_menu.addAction(paste_action)
         
@@ -417,22 +420,17 @@ class WinHexClone(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"无法读取簇: {str(e)}")
     
-    def create_tool_bar(self):
-        toolbar = QToolBar()
-        self.addToolBar(toolbar)
-        
-        # 添加工具栏按钮
-        new_action = QAction("新建", self)
-        new_action.triggered.connect(self.new_file)
-        toolbar.addAction(new_action)
-        
-        open_action = QAction("打开", self)
-        open_action.triggered.connect(self.open_file)
-        toolbar.addAction(open_action)
-        
-        save_action = QAction("保存", self)
-        save_action.triggered.connect(self.save_file)
-        toolbar.addAction(save_action)
+    def copy_selection(self):
+        """复制选中的内容"""
+        if hasattr(self, 'hex_editor') and self.hex_editor.has_selection():
+            # 实现复制逻辑
+            pass
+            
+    def paste_selection(self):
+        """粘贴内容到当前位置"""
+        if hasattr(self, 'hex_editor') and self.hex_editor.has_selection():
+            # 实现粘贴逻辑
+            pass
     
     def new_file(self):
         self.hex_editor.set_data(bytearray())
