@@ -9,6 +9,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QIcon
 from hex_editor import HexEditor
 from disk_utils import DiskUtils
+from fat32_recovery_dialog import FAT32RecoveryDialog
 
 class SectorDialog(QDialog):
     def __init__(self, parent=None):
@@ -343,6 +344,7 @@ class WinHexClone(QMainWindow):
                 QMessageBox.critical(self, "错误", f"无法读取磁盘数据：{str(e)}")
     
     def create_menu_bar(self):
+        """创建菜单栏"""
         menubar = self.menuBar()
         
         # 文件菜单
@@ -366,21 +368,34 @@ class WinHexClone(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
-        # 编辑菜单
-        edit_menu = menubar.addMenu("编辑")
-        copy_action = QAction("复制", self)
-        copy_action.triggered.connect(self.copy_selection)  # 添加复制功能连接
+        # 磁盘菜单
+        disk_menu = menubar.addMenu("磁盘")
         
-        paste_action = QAction("粘贴", self)
-        paste_action.triggered.connect(self.paste_selection)  # 添加粘贴功能连接
+        read_sector_action = QAction("读取扇区范围", self)
+        read_sector_action.triggered.connect(self.read_sector_range)
+        disk_menu.addAction(read_sector_action)
         
-        edit_menu.addAction(copy_action)
-        edit_menu.addAction(paste_action)
+        find_mft_action = QAction("查找$MFT位置", self)
+        find_mft_action.triggered.connect(self.find_mft)
+        disk_menu.addAction(find_mft_action)
+        
+        find_root_dir_action = QAction("查找根目录", self)
+        find_root_dir_action.triggered.connect(self.find_root_directory)
+        disk_menu.addAction(find_root_dir_action)
         
         # 工具菜单
         tools_menu = menubar.addMenu("工具")
-        search_action = QAction("搜索", self)
-        tools_menu.addAction(search_action)
+        
+        fat32_recovery_action = QAction("FAT32文件恢复", self)
+        fat32_recovery_action.triggered.connect(self.open_fat32_recovery)
+        tools_menu.addAction(fat32_recovery_action)
+        
+        # 帮助菜单
+        help_menu = menubar.addMenu("帮助")
+        
+        about_action = QAction("关于", self)
+        about_action.triggered.connect(self.show_about)
+        help_menu.addAction(about_action)
     
     def goto_sector(self):
         """跳转到指定扇区"""
@@ -495,6 +510,22 @@ class WinHexClone(QMainWindow):
                 QMessageBox.warning(self, "警告", "请输入有效的扇区号")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"读取扇区范围失败: {str(e)}")
+
+    def open_fat32_recovery(self):
+        """打开FAT32文件恢复对话框"""
+        try:
+            recovery_dialog = FAT32RecoveryDialog(self)
+            recovery_dialog.exec()
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"打开FAT32文件恢复对话框失败: {str(e)}")
+    
+    def show_about(self):
+        """显示关于对话框"""
+        QMessageBox.about(self, "关于WinHex克隆版", 
+                         "WinHex克隆版 v1.0\n\n"
+                         "一个使用Python和PyQt6开发的十六进制编辑器\n"
+                         "模仿了WinHex的基本功能\n\n"
+                         "© 2023 版权所有")
 
 def main():
     app = QApplication(sys.argv)
