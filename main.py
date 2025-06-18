@@ -110,7 +110,7 @@ class ClusterDialog(QDialog):
 class WinHexClone(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("WinHex 克隆版")
+        self.setWindowTitle("OpenHex")
         self.setGeometry(100, 100, 1200, 800)
         self.setStyleSheet("""
             QMainWindow {
@@ -331,7 +331,7 @@ class WinHexClone(QMainWindow):
                             sector_data = [data[i*512:(i+1)*512] for i in range(self.hex_editor.sectors_per_view)]
                             self.hex_editor.set_sector_data(sector_data, 0)
                             self.current_disk = file_name  # 只保存文件路径
-                            self.setWindowTitle(f"WinHex 克隆版 - 虚拟磁盘 {file_name}")
+                            self.setWindowTitle(f"OpenHex - 虚拟磁盘 {file_name}")
                         except Exception as e:
                             QMessageBox.critical(self, "错误", f"无法打开虚拟磁盘：{str(e)}")
                     return
@@ -353,7 +353,7 @@ class WinHexClone(QMainWindow):
                             sector_data.append(data)
                         self.hex_editor.set_sector_data(sector_data, base_sector)
                         self.current_disk = disk_id  # 只保存盘符或物理磁盘路径
-                        self.setWindowTitle(f"WinHex 克隆版 - 磁盘 {disk_id}")
+                        self.setWindowTitle(f"OpenHex - 磁盘 {disk_id}")
                     except Exception as e:
                         QMessageBox.critical(self, "错误", f"无法打开磁盘: {str(e)}")
                 else:
@@ -469,7 +469,7 @@ class WinHexClone(QMainWindow):
         self.hex_editor.set_data(bytearray())
         self.current_file = None
         self.current_disk = None
-        self.setWindowTitle("WinHex 克隆版 - 未命名")
+        self.setWindowTitle("OpenHex - V1.0")
     
     def open_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "打开文件", "", "所有文件 (*.*)")
@@ -480,7 +480,7 @@ class WinHexClone(QMainWindow):
                 self.hex_editor.set_data(data)
                 self.current_file = file_name
                 self.current_disk = None
-                self.setWindowTitle(f"WinHex 克隆版 - {file_name}")
+                self.setWindowTitle(f"OpenHex - {file_name}")
             except Exception as e:
                 QMessageBox.critical(self, "错误", f"无法打开文件：{str(e)}")
     
@@ -494,7 +494,7 @@ class WinHexClone(QMainWindow):
         try:
             with open(self.current_file, 'wb') as f:
                 f.write(self.hex_editor.data)
-            self.setWindowTitle(f"WinHex 克隆版 - {self.current_file}")
+            self.setWindowTitle(f"OpenHex - {self.current_file}")
         except Exception as e:
             QMessageBox.critical(self, "错误", f"无法保存文件：{str(e)}")
 
@@ -539,11 +539,14 @@ class WinHexClone(QMainWindow):
     
     def show_about(self):
         """显示关于对话框"""
-        QMessageBox.about(self, "关于WinHex克隆版", 
-                         "WinHex克隆版 v1.0\n\n"
+        QMessageBox.about(self, "关于OpenHex", 
+                         "OpenHex v1.0\n\n"
                          "一个使用Python和PyQt6开发的十六进制编辑器\n"
                          "模仿了WinHex的基本功能\n\n"
-                         "© 2023 版权所有")
+                         "开发许可：MIT License\n\n"
+                         "© 2025 版权所有\n\n"
+                         "OpenHex 是一个开源项目，由葛枝黉，孙景亮，王传宇，薛飞扬，程志硕，杨明儒开发。\n"
+                         "项目地址: https://github.com/sungehehe/openhex")
 
 def main():
     app = QApplication(sys.argv)
