@@ -15,10 +15,12 @@ class FAT32RecoveryDialog(QDialog):
         self.setMinimumSize(900, 600)
         self.setStyleSheet("""
             QDialog {
-                background-color: #f0f0f0;
+                background-color: #2c2c2c;
             }
             QLabel {
-                color: #333333;
+                color: #ffffff;
+                font-size: 12pt;
+                font-weight: normal;
             }
             QPushButton {
                 padding: 5px 15px;
@@ -26,32 +28,46 @@ class FAT32RecoveryDialog(QDialog):
                 color: white;
                 border: none;
                 border-radius: 3px;
+                font-size: 12pt;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #106ebe;
             }
             QPushButton:disabled {
-                background-color: #cccccc;
-                color: #666666;
+                background-color: #444444;
+                color: #999999;
             }
             QTableWidget {
-                border: 1px solid #cccccc;
-                background-color: white;
-                alternate-background-color: #f9f9f9;
+                border: 1px solid #555555;
+                background-color: #1e1e1e;
+                alternate-background-color: #2a2a2a;
+                gridline-color: #555555;
+                color: white;
+                font-size: 11pt;
             }
             QTableWidget::item {
                 padding: 5px;
+                color: white;
+            }
+            QTableWidget::item:selected {
+                background-color: #0078d7;
             }
             QHeaderView::section {
-                background-color: #e0e0e0;
+                background-color: #333333;
                 padding: 5px;
-                border: 1px solid #cccccc;
+                border: 1px solid #555555;
                 font-weight: bold;
+                font-size: 11pt;
+                color: white;
             }
             QProgressBar {
-                border: 1px solid #cccccc;
+                border: 1px solid #555555;
                 border-radius: 3px;
                 text-align: center;
+                font-size: 10pt;
+                color: white;
+                background-color: #1e1e1e;
             }
             QProgressBar::chunk {
                 background-color: #0078d7;
@@ -59,9 +75,24 @@ class FAT32RecoveryDialog(QDialog):
             }
             QComboBox {
                 padding: 5px;
-                border: 1px solid #cccccc;
+                border: 1px solid #555555;
                 border-radius: 3px;
-                background-color: white;
+                background-color: #1e1e1e;
+                color: white;
+                font-size: 11pt;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1e1e1e;
+                color: white;
+                selection-background-color: #0078d7;
+            }
+            QCheckBox {
+                font-size: 11pt;
+                color: white;
+            }
+            QCheckBox::indicator {
+                width: 15px;
+                height: 15px;
             }
         """)
         
