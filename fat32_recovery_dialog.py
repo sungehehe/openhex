@@ -153,8 +153,8 @@ class FAT32RecoveryDialog(QDialog):
         
         # 文件表格
         self.files_table = QTableWidget()
-        self.files_table.setColumnCount(6)
-        self.files_table.setHorizontalHeaderLabels(["文件名", "路径", "大小", "创建时间", "起始簇", "恢复概率"])
+        self.files_table.setColumnCount(5)
+        self.files_table.setHorizontalHeaderLabels(["文件名", "路径", "大小", "创建时间", "起始簇"])
         self.files_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.files_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.files_table.setAlternatingRowColors(True)
@@ -354,10 +354,6 @@ class FAT32RecoveryDialog(QDialog):
             
             # 起始簇
             self.files_table.setItem(i, 4, QTableWidgetItem(str(file["start_cluster"])))
-            
-            # 恢复概率 (简单估计)
-            recovery_chance = self.estimate_recovery_chance(file)
-            self.files_table.setItem(i, 5, QTableWidgetItem(recovery_chance))
     
     def format_file_size(self, size_bytes: int) -> str:
         """格式化文件大小显示"""
@@ -369,23 +365,6 @@ class FAT32RecoveryDialog(QDialog):
             return f"{size_bytes / (1024 * 1024):.2f} MB"
         else:
             return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
-    
-    def estimate_recovery_chance(self, file: dict) -> str:
-        """估计文件恢复的成功概率"""
-        # 简单估计，实际应根据文件系统状态、文件碎片化程度等进行更复杂的评估
-        if file["file_size"] == 0:
-            return "高"  # 空文件容易恢复
-            
-        if file["start_cluster"] < 2:
-            return "低"  # 无效的起始簇号
-        
-        # 按文件大小简单估计，小文件恢复概率高，大文件可能碎片化
-        if file["file_size"] < 1024 * 10:  # 10KB以下
-            return "高"
-        elif file["file_size"] < 1024 * 1024:  # 1MB以下
-            return "中"
-        else:
-            return "低"
     
     def recover_selected_files(self):
         """恢复选中的文件"""

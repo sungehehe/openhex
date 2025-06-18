@@ -34,7 +34,7 @@ class HexEditor(QWidget):
         # 设置背景色
         self.setAutoFillBackground(True)
         palette = self.palette()
-        palette.setColor(self.backgroundRole(), QColor("#FFFFFF")) #设置背景颜色
+        palette.setColor(self.backgroundRole(), QColor("#2c2c2c")) # 修改为暗色背景
         self.setPalette(palette)
         
         # 计算字体度量
@@ -137,7 +137,7 @@ class HexArea(QWidget):
         # 设置背景色
         self.setAutoFillBackground(True)
         palette = self.palette()
-        palette.setColor(self.backgroundRole(), QColor("#FFFFFF"))
+        palette.setColor(self.backgroundRole(), QColor("#2c2c2c")) # 修改为暗色背景
         self.setPalette(palette)
         
         # 滚动相关变量
@@ -163,8 +163,8 @@ class HexArea(QWidget):
         
         painter = QPainter(self)
         painter.setFont(self.hex_editor.font)
-        painter.fillRect(event.rect(), QColor("#FFFFFF"))
-        painter.setPen(QPen(QColor("#E0E0E0")))
+        painter.fillRect(event.rect(), QColor("#2c2c2c")) # 修改为暗色背景
+        painter.setPen(QPen(QColor("#555555"))) # 修改为更深的网格线颜色
         visible_rect = event.rect()
         start_y = max(0, int((visible_rect.y() + self.scroll_offset) // self.hex_editor.cell_height))
         end_y = min(len(self.hex_editor.data) // self.hex_editor.bytes_per_line + 1,
@@ -179,10 +179,10 @@ class HexArea(QWidget):
         lines_per_sector = self.hex_editor.sector_size // self.hex_editor.bytes_per_line if self.hex_editor.bytes_per_line else 1
         for s in range(1, len(self.hex_editor.sector_data)):
             y = int(s * lines_per_sector * self.hex_editor.cell_height - self.scroll_offset)
-            pen = QPen(QColor("#AAAAAA"), 1, Qt.PenStyle.DashLine)
+            pen = QPen(QColor("#777777"), 1, Qt.PenStyle.DashLine) # 更亮的分隔线
             painter.setPen(pen)
             painter.drawLine(0, y, self.width(), y)
-            painter.setPen(QPen(QColor("#E0E0E0")))
+            painter.setPen(QPen(QColor("#555555"))) # 恢复网格线颜色
         
         # 绘制垂直网格线
         for x in range(0, self.hex_editor.bytes_per_line + 1):
@@ -194,7 +194,7 @@ class HexArea(QWidget):
         painter.drawLine(ascii_start_x, 0, ascii_start_x, self.height())
         
         # 绘制偏移地址
-        painter.setPen(QPen(QColor("#000000")))
+        painter.setPen(QPen(QColor("#999999"))) # 灰白色偏移地址
         for i in range(start_y, end_y):
             offset = i * self.hex_editor.bytes_per_line
             y = int(i * self.hex_editor.cell_height - self.scroll_offset)
@@ -216,7 +216,7 @@ class HexArea(QWidget):
                 # 文件头区域 - 着色56字节
                 file_header_end = mft_record['header']['offset'] + 56
                 if i >= mft_record['header']['offset'] and i < file_header_end:
-                    bg_color = QColor("#FFE4B5")
+                    bg_color = QColor("#663D00")  # 暗橙色
                 
                 # 属性处理
                 for attr in mft_record['attributes']:
@@ -224,23 +224,23 @@ class HexArea(QWidget):
                     if attr['type'] in [0x10, 0x30]:
                         attr_header_end = attr['offset'] + 24
                         if i >= attr['offset'] and i < attr_header_end:
-                            bg_color = QColor("#ADD8E6")
+                            bg_color = QColor("#003366")  # 深蓝色
                         
                         # 10H属性体 - 着色72字节
                         if attr['type'] == 0x10 and 'content_offset' in attr:
                             attr_body_end = attr['offset'] + attr['content_offset'] + 72
                             if i >= attr['offset'] + attr['content_offset'] and i < attr_body_end:
-                                bg_color = QColor("#90EE90")
+                                bg_color = QColor("#005500")  # 深绿色
                         
                         # 30H属性体 - 着色80字节（原90字节减少10字节）
                         elif attr['type'] == 0x30 and 'content_offset' in attr:
                             attr_body_end = attr['offset'] + attr['content_offset'] + 80
                             if i >= attr['offset'] + attr['content_offset'] and i < attr_body_end:
-                                bg_color = QColor("#90EE90")
+                                bg_color = QColor("#005500")  # 深绿色
                     
                     # 其他属性值
                     elif 'content_offset' in attr and i >= attr['offset'] + attr['content_offset'] and i < attr['offset'] + attr['content_offset'] + attr['content_size']:
-                        bg_color = QColor("#90EE90")
+                        bg_color = QColor("#005500")  # 深绿色
             
             # 绘制选中背景
             if self.selection_start != -1 and self.selection_end != -1:
@@ -254,6 +254,7 @@ class HexArea(QWidget):
             
             rect = QRect(x + self.hex_editor.margin, y, self.hex_editor.cell_width - 2 * self.hex_editor.margin,
                         self.hex_editor.cell_height)
+            painter.setPen(QPen(QColor("#FFFFFF")))  # 使用白色文本显示十六进制值
             painter.drawText(rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
                            f"{self.hex_editor.data[i]:02X}")
         
@@ -271,9 +272,9 @@ class HexArea(QWidget):
                     painter.fillRect(rect, QColor("#0078D7"))
                     painter.setPen(QPen(QColor("#FFFFFF")))
                 else:
-                    painter.setPen(QPen(QColor("#000000")))
+                    painter.setPen(QPen(QColor("#FFFFFF")))  # 使用白色文本显示ASCII
             else:
-                painter.setPen(QPen(QColor("#000000")))
+                painter.setPen(QPen(QColor("#FFFFFF")))  # 使用白色文本显示ASCII
             
             # 只显示可打印字符
             char = chr(self.hex_editor.data[i]) if 32 <= self.hex_editor.data[i] <= 126 else '.'

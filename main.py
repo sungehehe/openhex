@@ -18,16 +18,17 @@ class SectorDialog(QDialog):
         self.setModal(True)
         self.setStyleSheet("""
             QDialog {
-                background-color: #f0f0f0;
+                background-color: #2c2c2c;
             }
             QLabel {
-                color: #FFFFFF;
+                color: #ffffff;
             }
             QLineEdit {
                 padding: 5px;
-                border: 1px solid #cccccc;
+                border: 1px solid #555555;
                 border-radius: 3px;
-                background-color: white;
+                background-color: #1e1e1e;
+                color: white;
             }
             QPushButton {
                 padding: 5px 15px;
@@ -65,16 +66,17 @@ class ClusterDialog(QDialog):
         self.setModal(True)
         self.setStyleSheet("""
             QDialog {
-                background-color: #f0f0f0;
+                background-color: #2c2c2c;
             }
             QLabel {
-                color: #333333;
+                color: #ffffff;
             }
             QLineEdit {
                 padding: 5px;
-                border: 1px solid #cccccc;
+                border: 1px solid #555555;
                 border-radius: 3px;
-                background-color: white;
+                background-color: #1e1e1e;
+                color: white;
             }
             QPushButton {
                 padding: 5px 15px;
@@ -112,10 +114,15 @@ class WinHexClone(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #f0f0f0;
+                background-color: #2c2c2c;
+            }
+            QWidget {
+                background-color: #2c2c2c;
             }
             QLabel {
-                color: #333333;
+                color: #ffffff;
+                font-size: 12pt;
+                font-weight: normal;
             }
             QPushButton {
                 padding: 5px 15px;
@@ -126,77 +133,88 @@ class WinHexClone(QMainWindow):
                 font-weight: bold;
             }
             QPushButton#goto_sector_btn, QPushButton#goto_cluster_btn {
-                color:  #ffffff;
+                color: white;
                 background-color: #0078d7;
             }
             QPushButton#goto_sector_btn:hover, QPushButton#goto_cluster_btn:hover {
                 background-color: #106ebe;
-                color: #ffffff;
+                color: white;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:disabled {
+                background-color: #444444;
+                color: #999999;
             }
             QComboBox {
                 padding: 5px;
-                border: 1px solid #cccccc;
+                border: 1px solid #555555;
                 border-radius: 3px;
-                background-color: white;
-                color: #222222;
+                background-color: #1e1e1e;
+                color: white;
                 font-size: 14px;
             }
             QComboBox QAbstractItemView {
-                color: #222222;
-                background: #ffffff;
-                selection-background-color: #e0e0e0;
+                color: white;
+                background: #1e1e1e;
+                selection-background-color: #0078d7;
             }
             QLineEdit {
                 padding: 5px;
-                border: 1px solid #cccccc;
+                border: 1px solid #555555;
                 border-radius: 3px;
-                background-color: white;
-                color: #222222;
+                background-color: #1e1e1e;
+                color: white;
                 font-size: 14px;
             }
             QLineEdit:disabled {
-                color: #aaaaaa;
+                color: #888888;
             }
             QToolBar {
-                background: #f0f0f0;
+                background: #2c2c2c;
                 border: none;
             }
             QToolButton {
-                color: #222222;
+                color: white;
                 background: transparent;
                 font-size: 14px;
                 padding: 5px 10px;
             }
             QToolButton:hover {
-                background: #e0e0e0;
-                color: #222222;
+                background: #3a3a3a;
+                color: white;
             }
             QMenuBar {
-                background-color: #f0f0f0;
-                color: #333333;
+                background-color: #2c2c2c;
+                color: white;
             }
             QMenuBar::item {
-                background-color: #f0f0f0;
-                color: #333333;
+                background-color: #2c2c2c;
+                color: white;
                 padding: 5px 10px;
             }
             QMenuBar::item:selected {
-                background-color: #e0e0e0;
+                background-color: #3a3a3a;
             }
             QMenu {
-                background-color: #f0f0f0;
-                color: #333333;
-                border: 1px solid #cccccc;
+                background-color: #2c2c2c;
+                color: white;
+                border: 1px solid #555555;
             }
             QMenu::item {
                 padding: 5px 20px;
             }
             QMenu::item:selected {
-                background-color: #e0e0e0;
+                background-color: #3a3a3a;
             }
             QMessageBox {
-                background-color: #f0f0f0;
-                color: #333333;
+                background-color: #2c2c2c;
+                color: white;
+            }
+            QStatusBar {
+                background-color: #2c2c2c;
+                color: white;
             }
         """)
         
